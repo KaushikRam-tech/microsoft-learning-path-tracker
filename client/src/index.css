@@ -317,3 +317,64 @@ h1 { font-size: clamp(31px, 4vw, 47px); letter-spacing: -.055em; line-height: .9
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+/* Functional panels: keep modal surfaces feeling like clipped study sheets, not generic system dialogs. */
+.tracker-dialog { background: var(--paper); border: 1px solid var(--line); border-radius: 0; box-shadow: 0 24px 70px rgba(23,33,43,.16); padding: 28px; }
+.tracker-dialog::before { content: ""; position: absolute; left: 0; top: 22px; width: 3px; height: 44px; background: var(--cobalt); }
+.tracker-dialog h2 { font: 600 24px/1.1 "Space Grotesk", sans-serif; letter-spacing: -.045em; }
+.tracker-dialog [data-slot="dialog-description"] { color: var(--slate); font-size: 12px; line-height: 1.5; margin-top: 7px; }
+.path-picker-grid, .focus-plan, .settings-list, .calendar-detail, .milestone-list { display: grid; gap: 8px; margin-top: 20px; }
+.path-picker-option, .focus-row, .setting-row, .calendar-detail-row { width: 100%; display: flex; align-items: center; gap: 12px; text-align: left; padding: 12px; border: 1px solid var(--line); background: #fbfaf5; color: var(--ink); transition: border-color .18s var(--ease-out), background .18s var(--ease-out), transform .18s var(--ease-out); }
+.path-picker-option:hover, .focus-row:hover, .calendar-detail-row:hover { border-color: var(--cobalt); background: #f4f8fd; transform: translateX(2px); }
+.path-picker-option.selected { border-color: var(--cobalt); background: #edf5ff; }
+.path-picker-option > span:nth-child(2), .focus-row > span:nth-child(2), .setting-row > span:first-child, .calendar-detail-row > div { min-width: 0; flex: 1; display: grid; gap: 4px; }
+.path-picker-option strong, .focus-row strong, .setting-row strong, .calendar-detail-row strong { font: 600 12px "Space Grotesk", sans-serif; }
+.path-picker-option small, .focus-row small, .setting-row small, .calendar-detail-row small { color: var(--slate); font-size: 10px; }
+.path-picker-option > svg { color: var(--cobalt); opacity: 0; }
+.path-picker-option.selected > svg { opacity: 1; }
+.picker-number { display: grid; place-items: center; width: 30px; height: 30px; background: var(--ink); color: white; font: 600 11px "Space Grotesk", sans-serif; }
+.focus-row.complete { background: var(--sage); border-color: #b5d4c1; }
+.focus-check { width: 20px; height: 20px; display: grid; place-items: center; border: 1px solid #b7c3bc; color: white; flex-shrink: 0; }
+.focus-row.complete .focus-check { background: var(--sage-ink); border-color: var(--sage-ink); }
+.focus-row > svg { color: #9aa19d; }
+.setting-row { align-items: flex-start; }
+.setting-row input { appearance: none; width: 34px; height: 19px; border: 1px solid #b8c1bb; background: #e8ebe7; position: relative; flex-shrink: 0; transition: background .18s var(--ease-out); }
+.setting-row input::after { content: ""; position: absolute; width: 13px; height: 13px; left: 2px; top: 2px; background: white; box-shadow: 0 1px 2px rgba(0,0,0,.15); transition: transform .18s var(--ease-out); }
+.setting-row input:checked { background: var(--cobalt); border-color: var(--cobalt); }
+.setting-row input:checked::after { transform: translateX(15px); }
+.detail-stat { display: flex; align-items: baseline; gap: 10px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.detail-stat strong { font: 600 36px "Space Grotesk", sans-serif; letter-spacing: -.08em; }
+.detail-stat strong span { font-size: 16px; margin-left: 2px; }
+.detail-stat span { color: var(--slate); font-size: 11px; }
+.detail-note { display: flex; align-items: center; gap: 7px; color: var(--sage-ink); font-size: 11px; margin-top: 14px; }
+.calendar-detail-row { padding: 11px 12px; }
+.calendar-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cobalt); box-shadow: 0 0 0 4px #e4effd; margin: 0 4px; }
+.calendar-dot.ink { background: var(--ink); box-shadow: 0 0 0 4px #e7e9e8; }
+.calendar-dot.orange { background: var(--orange); box-shadow: 0 0 0 4px #fff0d5; }
+.small-action { padding: 6px 8px; color: var(--cobalt-dark); background: transparent; border: 1px solid #c9dbef; font-size: 10px; font-weight: 600; }
+.milestone { display: grid; gap: 7px; }
+.milestone > div { display: flex; justify-content: space-between; align-items: center; }
+.milestone strong { font: 600 12px "Space Grotesk", sans-serif; }
+.milestone > div span { color: var(--orange-ink); font: 600 11px "Space Grotesk", sans-serif; }
+.module-preview { display: flex; align-items: flex-start; gap: 20px; padding: 18px; margin-top: 20px; background: #f2f4ef; border: 1px solid #dfe4dd; }
+.module-number-large { color: #c8d3cc; font: 600 54px/.8 "Space Grotesk", sans-serif; letter-spacing: -.1em; }
+.module-preview p { color: var(--slate); font-size: 12px; line-height: 1.55; }
+.module-preview-meta { display: flex; flex-wrap: wrap; gap: 13px; color: var(--sage-ink); font-size: 10px; margin-top: 15px; }
+.module-preview-meta span { display: flex; align-items: center; gap: 5px; }
+.course-option-panel { display: grid; gap: 16px; margin-top: 20px; }
+.course-option-panel label { display: grid; gap: 7px; color: var(--slate); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.course-option-panel input { border-radius: 0; border-color: var(--line); background: #fbfaf5; font-size: 12px; }
+.option-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.option-actions .outline-button, .option-actions .danger-button { font-size: 11px; padding: 8px 10px; }
+.danger-button { border: 1px solid #e8c8c3; color: #a54d43; background: #fff7f5; }
+.tracker-dialog .primary-button, .tracker-dialog .outline-button { justify-content: center; }
+.compact-dialog { max-width: 430px; }
+
+@media (max-width: 560px) {
+  .tracker-dialog { width: calc(100% - 24px); padding: 22px 18px; }
+  .tracker-dialog h2 { font-size: 21px; }
+  .tracker-dialog [data-slot="dialog-footer"] { flex-direction: column-reverse; align-items: stretch; }
+  .tracker-dialog [data-slot="dialog-footer"] > button { width: 100%; }
+  .module-preview { gap: 13px; }
+  .module-number-large { font-size: 43px; }
+}
