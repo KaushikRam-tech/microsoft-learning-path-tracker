@@ -304,7 +304,8 @@ export default function Home() {
         <header className="topbar">
           <button className="icon-button menu-trigger" aria-label="Open navigation" onClick={() => setMobileNavOpen(true)}><Menu size={20} /></button>
           <div className="topbar-left"><div className="topbar-brand"><AppMark small /><span>PATHFINDER</span></div><div className="breadcrumb"><span>Workspace</span><ChevronRight size={14} /><strong>{activeNav}</strong></div></div>
-          <div className="topbar-actions">
+            <div className="topbar-actions">
+            <span className="sync-chip"><span className="sync-dot" /> Synced 08:42</span>
             <label className="search-box">
               <Search size={17} />
               <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search your learning" aria-label="Search your learning" />
@@ -350,6 +351,12 @@ export default function Home() {
               </div>
               <div className="streak-foot"><TrendingUp size={14} /> <span>+2 from last week</span></div>
             </article>
+          </section>
+
+          <section className="quick-stats reveal-three">
+            <div className="quick-stat"><span className="quick-stat-icon blue"><BarChart3 size={16} /></span><div><strong>{totalComplete} modules</strong><span>marked complete</span></div><span className="stat-trend">+2 this week</span></div>
+            <div className="quick-stat"><span className="quick-stat-icon sage"><Gauge size={16} /></span><div><strong>86 min</strong><span>study time this week</span></div><span className="stat-trend sage-text">on pace</span></div>
+            <div className="quick-stat"><span className="quick-stat-icon orange"><Compass size={16} /></span><div><strong>2 days</strong><span>ahead of last week</span></div><span className="stat-trend orange-text">steady</span></div>
           </section>
 
           <section className="section-block reveal-three">
