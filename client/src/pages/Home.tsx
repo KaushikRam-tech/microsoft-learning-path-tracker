@@ -45,6 +45,7 @@ type Course = {
   time: string;
   accent: "blue" | "sage" | "orange";
   image?: string;
+  url: string;
 };
 
 const initialCourses: Course[] = [
@@ -58,6 +59,7 @@ const initialCourses: Course[] = [
     time: "2h 40m left",
     accent: "blue",
     image: "/manus-storage/cloud-pathway-illustration_3c3ae29a.jpg",
+    url: "https://learn.microsoft.com/en-us/training/paths/microsoft-azure-fundamentals-describe-cloud-concepts/",
   },
   {
     id: 2,
@@ -68,6 +70,7 @@ const initialCourses: Course[] = [
     done: 3,
     time: "42m left",
     accent: "sage",
+    url: "https://learn.microsoft.com/en-us/training/modules/describe-cloud-service-types/",
   },
   {
     id: 3,
@@ -78,6 +81,7 @@ const initialCourses: Course[] = [
     done: 0,
     time: "1h 55m",
     accent: "orange",
+    url: "https://learn.microsoft.com/en-us/credentials/certifications/azure-fundamentals/",
   },
 ];
 
@@ -89,9 +93,9 @@ const navItems = [
 ];
 
 const upcoming = [
-  { day: "MON", date: "24", label: "Cloud concepts", meta: "Module 04 · 18 min", color: "blue" },
-  { day: "TUE", date: "25", label: "Azure architecture", meta: "Module 05 · 32 min", color: "ink" },
-  { day: "WED", date: "26", label: "Knowledge check", meta: "Quiz · 10 min", color: "orange" },
+  { day: "MON", date: "24", label: "Cloud concepts", meta: "Module 04 · 18 min", color: "blue", url: "https://learn.microsoft.com/en-us/training/modules/describe-cloud-service-types/1-introduction/" },
+  { day: "TUE", date: "25", label: "Azure architecture", meta: "Module 05 · 32 min", color: "ink", url: "https://learn.microsoft.com/en-us/training/paths/azure-fundamentals-describe-azure-architecture-services/" },
+  { day: "WED", date: "26", label: "Knowledge check", meta: "Quiz · 10 min", color: "orange", url: "https://learn.microsoft.com/en-us/training/modules/describe-cloud-service-types/5-knowledge-check/" },
 ];
 
 function ProgressBar({ value, color = "blue" }: { value: number; color?: string }) {
@@ -107,6 +111,25 @@ function AppMark({ small = false }: { small?: boolean }) {
   return <img className={`app-mark-image ${small ? "small" : ""}`} src="/manus-storage/pathfinder-mark_7479ba9c.png" alt="Pathfinder mark" />;
 }
 
+function LoginScreen({ onSignIn }: { onSignIn: (email: string, remember: boolean) => void }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(true);
+  const [error, setError] = useState("");
+
+  function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!email.trim() || !email.includes("@")) return setError("Enter a valid email address.");
+    if (password.length < 4) return setError("Password must be at least 4 characters.");
+    onSignIn(email.trim(), remember);
+  }
+
+  return <div className="login-shell">
+    <div className="login-aside"><div className="login-brand"><AppMark /><div><strong>PATHFINDER</strong><span>Microsoft Learn</span></div></div><div className="login-aside-copy"><span className="section-kicker">A CLEARER WAY TO LEARN</span><h1>Make the next hour count.</h1><p>See your progress, pick up where you left off, and open the exact Microsoft Learn material you need.</p><div className="login-proof"><span><Check size={14} /> Progress stays in view</span><span><Check size={14} /> Every module has a next step</span><span><Check size={14} /> Built for focused learners</span></div></div><small className="login-aside-foot">Pathfinder for Microsoft Learn · 2026</small></div>
+    <main className="login-panel"><div className="login-panel-inner"><div className="login-panel-top"><span className="section-kicker">LEARNER WORKSPACE</span><span>New here? <button onClick={() => setError("Use the sign-in form to create a local workspace.")}>Create account</button></span></div><div className="login-form-heading"><h2>Sign in to Pathfinder</h2><p>Pick up your learning path without losing the thread.</p></div><form className="login-form" onSubmit={submit}><label>Email address<Input type="email" value={email} onChange={(event) => { setEmail(event.target.value); setError(""); }} placeholder="you@example.com" autoComplete="email" /></label><label>Password<Input type="password" value={password} onChange={(event) => { setPassword(event.target.value); setError(""); }} placeholder="Enter your password" autoComplete="current-password" /></label><div className="login-options"><label className="remember-option"><input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} /> Keep me signed in</label><button type="button" onClick={() => setError("Password reset is available once a connected account is enabled.")}>Forgot password?</button></div>{error && <div className="login-error" role="alert">{error}</div>}<button className="primary-button login-submit" type="submit">Continue to workspace <ArrowUpRight size={16} /></button></form><div className="login-divider"><span>LOCAL WORKSPACE SIGN-IN</span></div><p className="login-note">This frontend stores your learner session in this browser. Connect Microsoft OAuth later to use production accounts.</p></div></main>
+  </div>;
+}
+
 export default function Home() {
   const [courses, setCourses] = useState(initialCourses);
   const [activeNav, setActiveNav] = useState("Overview");
@@ -119,6 +142,26 @@ export default function Home() {
   const [renameValue, setRenameValue] = useState("");
   const [focusDone, setFocusDone] = useState<number[]>([]);
   const [settings, setSettings] = useState({ reminders: true, weeklyDigest: true });
+  const [learner, setLearner] = useState(() => typeof window !== "undefined" ? (localStorage.getItem("pathfinder-learner") || "") : "");
+
+  function signIn(email: string, remember: boolean) {
+    const displayName = email.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+    setLearner(displayName);
+    if (remember) localStorage.setItem("pathfinder-learner", displayName); else sessionStorage.setItem("pathfinder-learner", displayName);
+    toast.success("Workspace unlocked", { description: `Good to have you here, ${displayName}.` });
+  }
+
+  function signOut() {
+    localStorage.removeItem("pathfinder-learner");
+    sessionStorage.removeItem("pathfinder-learner");
+    setLearner("");
+    toast("Signed out of Pathfinder");
+  }
+
+  function openLearn(url: string, label: string) {
+    window.open(url, "_blank", "noopener,noreferrer");
+    toast.success("Opening Microsoft Learn", { description: label });
+  }
 
   const totalComplete = useMemo(
     () => courses.reduce((sum, course) => sum + course.done, 0),
@@ -127,6 +170,8 @@ export default function Home() {
   const filteredCourses = courses.filter((course) =>
     `${course.title} ${course.category}`.toLowerCase().includes(query.toLowerCase()),
   );
+
+  if (!learner) return <LoginScreen onSignIn={signIn} />;
 
   function handleNav(label: string) {
     setActiveNav(label);
@@ -145,7 +190,7 @@ export default function Home() {
 
   function addPath() {
     const nextId = Math.max(...courses.map((course) => course.id)) + 1;
-    setCourses((current) => [...current, { id: nextId, title: newPath, provider: "Microsoft Learn", category: "New path", lessons: 8, done: 0, time: "2h 10m", accent: "orange" }]);
+    setCourses((current) => [...current, { id: nextId, title: newPath, provider: "Microsoft Learn", category: "New path", lessons: 8, done: 0, time: "2h 10m", accent: "orange", url: "https://learn.microsoft.com/en-us/training/" }]);
     setDialog(null);
     setShowAll(true);
     toast.success("Learning path added", { description: `${newPath} is now in your workspace.` });
@@ -222,12 +267,12 @@ export default function Home() {
 
         <div className="sidebar-label spaced">Your paths</div>
         <div className="path-list">
-          <button className="path-row" onClick={() => { setSelectedCourseId(1); setDialog("next"); }}>
+          <button className="path-row" onClick={() => openLearn(initialCourses[0].url, "Azure Fundamentals")}>
             <span className="path-icon azure"><Cloud size={15} /></span>
             <span>Azure Fundamentals</span>
             <span className="path-percent">67%</span>
           </button>
-          <button className="path-row" onClick={() => { setSelectedCourseId(2); setDialog("course-options"); }}>
+          <button className="path-row" onClick={() => openLearn(initialCourses[1].url, "Describe cloud service types")}>
             <span className="path-icon power"><Zap size={15} /></span>
             <span>Power Platform</span>
             <span className="path-percent">24%</span>
@@ -247,11 +292,11 @@ export default function Home() {
           <button className="nav-item secondary-nav" onClick={() => setDialog("settings")}>
             <Settings2 size={17} /> <span>Settings</span>
           </button>
-          <div className="profile-row">
-            <div className="avatar">AP</div>
-            <div className="profile-copy"><strong>Alex Parker</strong><span>Cloud learner</span></div>
+          <button className="profile-row" onClick={signOut} aria-label="Sign out of Pathfinder">
+            <div className="avatar">{learner.slice(0, 2).toUpperCase()}</div>
+            <div className="profile-copy"><strong>{learner}</strong><span>Cloud learner · Sign out</span></div>
             <MoreHorizontal size={18} className="profile-more" />
-          </div>
+          </button>
         </div>
       </aside>
 
@@ -266,7 +311,7 @@ export default function Home() {
               <span className="shortcut">⌘ K</span>
             </label>
             <button className="icon-button notification-button" aria-label="Notifications" onClick={() => toast("You're all caught up.")}><Bell size={18} /><span /></button>
-            <div className="top-avatar">AP</div>
+            <div className="top-avatar">{learner.slice(0, 2).toUpperCase()}</div>
           </div>
         </header>
 
@@ -274,7 +319,7 @@ export default function Home() {
           <section className="page-heading reveal-one">
             <div>
               <div className="eyebrow"><span className="eyebrow-rule" /> MONDAY, AUGUST 24, 2026</div>
-              <h1>Good morning, Alex.</h1>
+              <h1>Good morning, {learner.split(" ")[0]}.</h1>
               <p>Take the next module. Your momentum is already doing the work.</p>
             </div>
             <button className="outline-button" onClick={() => setDialog("path")}><Plus size={17} /> Add learning path</button>
@@ -288,7 +333,7 @@ export default function Home() {
                 <p>Build a working foundation in cloud concepts, services, and architecture.</p>
                 <div className="hero-progress-row"><strong>67%</strong><span>8 of 12 modules complete</span></div>
                 <ProgressBar value={67} />
-                <div className="hero-card-footer"><button className="primary-button" onClick={completeNext}><Play size={15} fill="currentColor" /> Continue learning</button><span className="last-studied"><Clock3 size={14} /> Last studied yesterday</span></div>
+                <div className="hero-card-footer"><button className="primary-button" onClick={() => { completeNext(); openLearn(initialCourses[1].url, "Describe cloud service types"); }}><Play size={15} fill="currentColor" /> Continue learning</button><span className="last-studied"><Clock3 size={14} /> Last studied yesterday</span></div>
               </div>
               <div className="hero-image-wrap">
                 <img src="/manus-storage/pathfinder-study-desk_1f988ccf.jpg" alt="Notebook, ruler, and study materials on a warm desk" />
@@ -317,7 +362,7 @@ export default function Home() {
                   <div className="course-content"><span className="course-category">{course.category}</span><h3>{course.title}</h3><p>{course.provider}</p></div>
                   {course.image && <img className="course-thumb" src={course.image} alt="Abstract cloud pathway illustration" />}
                   <div className="course-progress"><div className="course-progress-label"><span>{course.done}/{course.lessons} modules</span><strong>{percent}%</strong></div><ProgressBar value={percent} color={course.accent} /></div>
-                  <button className="course-action" onClick={() => course.done === course.lessons ? toast.success("Path complete — nice work!") : (course.id === 1 ? completeNext() : toast(`Opening ${course.title}`))}>{course.done === 0 ? "Start path" : "Continue"} <ChevronRight size={15} /></button>
+                  <button className="course-action" onClick={() => course.done === course.lessons ? toast.success("Path complete — nice work!") : (course.id === 1 ? completeNext() : null, openLearn(course.url, course.title))}>{course.done === 0 ? "Open path" : "Continue"} <ChevronRight size={15} /></button>
                 </article>;
               })}
               {filteredCourses.length > 0 && !showAll && !query && <aside className="path-annotation"><div className="annotation-rule" /><div className="section-kicker">FIELD NOTES</div><p>Two paths in motion. One clear next move.</p><span><CheckCircle2 size={13} /> Synced with your study plan</span><small>Last updated 08:42</small></aside>}
@@ -331,7 +376,7 @@ export default function Home() {
               <div className="next-content">
                 <div className="next-number">04</div>
                 <div className="next-copy"><span className="course-category">MODULE 04 · AZURE FUNDAMENTALS</span><h3>Describe cloud service types</h3><p>Understand IaaS, PaaS, and SaaS — and when to use each one.</p><div className="next-meta"><span><Clock3 size={14} /> 18 min</span><span><BookOpen size={14} /> 1 knowledge check</span></div></div>
-                <button className="circle-arrow" aria-label="Open next module" onClick={() => setDialog("next") }><ArrowUpRight size={19} /></button>
+                <button className="circle-arrow" aria-label="Open next module" onClick={() => openLearn("https://learn.microsoft.com/en-us/training/modules/describe-cloud-service-types/", "Describe cloud service types") }><ArrowUpRight size={19} /></button>
               </div>
             </article>
 
@@ -340,13 +385,13 @@ export default function Home() {
               <div className="card-header"><div><div className="section-kicker">CERTIFICATION</div><h2>AZ-900 readiness</h2></div><GraduationCap size={22} className="readiness-icon" /></div>
               <div className="readiness-body"><div className="readiness-score">42<span>%</span></div><div className="readiness-copy"><strong>Foundational</strong><span>Keep building your core skills</span></div></div>
               <ProgressBar value={42} color="orange" />
-              <div className="readiness-foot"><span>Est. 3 weeks at your pace</span><button onClick={() => setDialog("readiness")}>See breakdown <ArrowUpRight size={14} /></button></div>
+              <div className="readiness-foot"><span>Est. 3 weeks at your pace</span><button onClick={() => openLearn("https://learn.microsoft.com/en-us/credentials/certifications/azure-fundamentals/", "AZ-900 certification")}>See certification <ArrowUpRight size={14} /></button></div>
             </article>
           </section>
 
           <section className="section-block upcoming-block reveal-five">
             <div className="section-heading"><div><div className="section-kicker">YOUR WEEK</div><h2>Upcoming study plan</h2></div><button className="text-button" onClick={() => setDialog("calendar")}>Open calendar <ArrowUpRight size={15} /></button></div>
-            <div className="upcoming-list">{upcoming.map((item, index) => <button className="upcoming-row" key={`${item.day}-${item.date}`} onClick={() => setDialog("calendar")}><div className="date-block"><small>{item.day}</small><strong>{item.date}</strong></div><div className={`upcoming-marker ${item.color}`}><span /></div><div className="upcoming-copy"><strong>{item.label}</strong><span>{item.meta}</span></div><span className="upcoming-status">{index === 0 ? <span className="today-label">Today</span> : <ChevronRight size={16} />}</span></button>)}</div>
+            <div className="upcoming-list">{upcoming.map((item, index) => <button className="upcoming-row" key={`${item.day}-${item.date}`} onClick={() => openLearn(item.url, item.label)}><div className="date-block"><small>{item.day}</small><strong>{item.date}</strong></div><div className={`upcoming-marker ${item.color}`}><span /></div><div className="upcoming-copy"><strong>{item.label}</strong><span>{item.meta}</span></div><span className="upcoming-status">{index === 0 ? <span className="today-label">Today</span> : <ChevronRight size={16} />}</span></button>)}</div>
           </section>
 
           <footer className="page-footer"><span><AppMark small /> Pathfinder for Microsoft Learn</span><span>Progress is a practice, not a finish line.</span></footer>
@@ -387,11 +432,11 @@ export default function Home() {
         </Dialog>
 
         <Dialog open={dialog === "readiness"} onOpenChange={(open) => !open && setDialog(null)}>
-          <DialogContent className="tracker-dialog"><DialogHeader><DialogTitle>AZ-900 readiness breakdown</DialogTitle><DialogDescription>Three milestones are shaping your current readiness score.</DialogDescription></DialogHeader><div className="milestone-list">{[["Cloud concepts", 78], ["Azure architecture", 42], ["Core services", 19]].map(([label, value]) => <div className="milestone" key={label as string}><div><strong>{label}</strong><span>{value}%</span></div><ProgressBar value={value as number} color="orange" /></div>)}</div><DialogFooter><button className="primary-button" onClick={() => { setDialog("next"); toast("Opening the next recommended module"); }}>Study next milestone <ArrowUpRight size={14} /></button></DialogFooter></DialogContent>
+          <DialogContent className="tracker-dialog"><DialogHeader><DialogTitle>AZ-900 readiness breakdown</DialogTitle><DialogDescription>Three milestones are shaping your current readiness score.</DialogDescription></DialogHeader><div className="milestone-list">{[["Cloud concepts", 78], ["Azure architecture", 42], ["Core services", 19]].map(([label, value]) => <div className="milestone" key={label as string}><div><strong>{label}</strong><span>{value}%</span></div><ProgressBar value={value as number} color="orange" /></div>)}</div><DialogFooter><button className="primary-button" onClick={() => openLearn("https://learn.microsoft.com/en-us/training/modules/describe-cloud-service-types/", "Next AZ-900 milestone")}>Open next milestone <ArrowUpRight size={14} /></button></DialogFooter></DialogContent>
         </Dialog>
 
         <Dialog open={dialog === "next"} onOpenChange={(open) => !open && setDialog(null)}>
-          <DialogContent className="tracker-dialog"><DialogHeader><DialogTitle>Describe cloud service types</DialogTitle><DialogDescription>Module 04 · Azure Fundamentals · 18 minutes</DialogDescription></DialogHeader><div className="module-preview"><div className="module-number-large">04</div><div><p>Understand the difference between IaaS, PaaS, and SaaS, then choose the right model for real-world scenarios.</p><div className="module-preview-meta"><span><BookOpen size={14} /> 3 lessons</span><span><CircleHelp size={14} /> 1 knowledge check</span></div></div></div><DialogFooter><button className="outline-button" onClick={() => setDialog(null)}>Close</button><button className="primary-button" onClick={() => { completeNext(); setDialog(null); }}>Mark module complete <CheckCircle2 size={14} /></button></DialogFooter></DialogContent>
+          <DialogContent className="tracker-dialog"><DialogHeader><DialogTitle>Describe cloud service types</DialogTitle><DialogDescription>Module 04 · Azure Fundamentals · 18 minutes</DialogDescription></DialogHeader><div className="module-preview"><div className="module-number-large">04</div><div><p>Understand the difference between IaaS, PaaS, and SaaS, then choose the right model for real-world scenarios.</p><div className="module-preview-meta"><span><BookOpen size={14} /> 3 lessons</span><span><CircleHelp size={14} /> 1 knowledge check</span></div></div></div><DialogFooter><button className="outline-button" onClick={() => setDialog(null)}>Close</button><button className="primary-button" onClick={() => { completeNext(); openLearn("https://learn.microsoft.com/en-us/training/modules/describe-cloud-service-types/", "Describe cloud service types"); setDialog(null); }}>Open module in Learn <ArrowUpRight size={14} /></button></DialogFooter></DialogContent>
         </Dialog>
 
         <Dialog open={dialog === "course-options"} onOpenChange={(open) => !open && setDialog(null)}>

@@ -1,5 +1,13 @@
 # Placeholder Interaction Upgrade Checklist
 
+# Sign-in and External Learning Upgrade
+
+- [x] Add a sign-in screen with email/password validation, remember-me persistence, and logout.
+- [x] Gate the dashboard behind the sign-in screen and show the signed-in learner identity.
+- [x] Add verified Microsoft Learn destinations for the Azure path, module, course cards, next module, and study-plan rows.
+- [x] Make Continue learning open the real Microsoft Learn material in a new tab.
+- [x] Verify authentication state, external link behavior, responsiveness, and production build.
+
 - [x] Replace navigation placeholder toasts with working view switching for Overview, My learning, Collections, and Achievements.
 - [x] Add a functional learning-path picker dialog with selectable path cards and add-to-workspace behavior.
 - [x] Replace study coach placeholder with a focus-plan panel containing actionable study blocks.
