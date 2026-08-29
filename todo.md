@@ -1,5 +1,21 @@
 # Placeholder Interaction Upgrade Checklist
 
+# Preview Recovery
+
+- [x] Diagnose why the full-stack dev server preview is unavailable.
+- [x] Fix the startup or build blocker.
+- [x] Restart and verify the preview responds.
+
+
+# Persisted Analytics Upgrade
+
+- [ ] Upgrade the static project with authenticated database support.
+- [ ] Add a learner activity table and migration.
+- [ ] Add protected activity query and completion mutation procedures.
+- [ ] Wire completion actions to record activity and refresh analytics.
+- [ ] Replace static chart history with persisted activity aggregates.
+- [ ] Verify authenticated persistence, chart updates, responsiveness, and production build.
+
 # Analytics, Dark Mode, and Export Upgrade
 
 - [x] Add a dashboard analytics view with progress-over-time charts and statistics.
