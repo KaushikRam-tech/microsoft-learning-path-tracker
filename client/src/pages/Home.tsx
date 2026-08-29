@@ -1,6 +1,10 @@
 /* Precision Notebook: editorial study ledger, warm canvas, graphite ink, cobalt progress signals. */
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
+import { useTheme } from "@/contexts/ThemeContext";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis } from "recharts";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,6 +26,11 @@ import {
   GraduationCap,
   LayoutDashboard,
   Library,
+  Moon,
+  Sun,
+  Download,
+  FileImage,
+  FileText,
   Menu,
   MoreHorizontal,
   Play,
@@ -87,6 +96,7 @@ const initialCourses: Course[] = [
 
 const navItems = [
   { label: "Overview", icon: LayoutDashboard, active: true },
+  { label: "Analytics", icon: BarChart3 },
   { label: "My learning", icon: Library },
   { label: "Collections", icon: FolderKanban },
   { label: "Achievements", icon: Award },
@@ -98,6 +108,19 @@ const upcoming = [
   { day: "WED", date: "26", label: "Knowledge check", meta: "Quiz · 10 min", color: "orange", url: "https://learn.microsoft.com/en-us/training/modules/describe-cloud-service-types/5-knowledge-check/" },
 ];
 
+const progressHistory = [
+  { week: "Jul 06", completed: 2, minutes: 38 },
+  { week: "Jul 13", completed: 3, minutes: 52 },
+  { week: "Jul 20", completed: 4, minutes: 74 },
+  { week: "Jul 27", completed: 3, minutes: 61 },
+  { week: "Aug 03", completed: 5, minutes: 98 },
+  { week: "Aug 10", completed: 4, minutes: 86 },
+  { week: "Aug 17", completed: 6, minutes: 112 },
+  { week: "Aug 24", completed: 2, minutes: 34 },
+];
+
+const chartTooltipStyle = { background: "#fffefa", border: "1px solid #e1dfd7", borderRadius: 0, fontSize: 11, color: "#17212b" };
+
 function ProgressBar({ value, color = "blue" }: { value: number; color?: string }) {
   return (
     <div className="progress-track" aria-label={`${value}% complete`}>
@@ -105,6 +128,18 @@ function ProgressBar({ value, color = "blue" }: { value: number; color?: string 
       <span className="progress-ticks" aria-hidden="true">{[0, 1, 2, 3, 4].map((tick) => <i key={tick} />)}</span>
     </div>
   );
+}
+
+function AnalyticsView({ learner, totalComplete, theme, exporting, onBack, onThemeToggle, onExportImage, onExportPdf }: { learner: string; totalComplete: number; theme: "light" | "dark"; exporting: boolean; onBack: () => void; onThemeToggle: () => void; onExportImage: () => void; onExportPdf: () => void }) {
+  const chartInk = theme === "dark" ? "#b2bfcb" : "#87918f";
+  const chartGrid = theme === "dark" ? "#263642" : "#e8e6df";
+  const chartTip = theme === "dark" ? { background: "#17232c", border: "1px solid #344651", borderRadius: 0, fontSize: 11, color: "#f2f6f8" } : chartTooltipStyle;
+  return <div className="analytics-view" id="analytics-export-surface">
+    <section className="analytics-heading"><div><div className="eyebrow"><span className="eyebrow-rule" /> PATHFINDER INSIGHTS</div><h1>Your learning, in motion.</h1><p>See how your focus is building over time, {learner.split(" ")[0]}.</p></div><div className="analytics-actions"><button className="theme-toggle analytics-theme" onClick={onThemeToggle}>{theme === "dark" ? <Sun size={15} /> : <Moon size={15} />} {theme === "dark" ? "Light mode" : "Dark mode"}</button><button className="outline-button" onClick={onBack}>Back to overview</button><button className="primary-button" onClick={onExportImage} disabled={exporting}><FileImage size={15} /> {exporting ? "Preparing…" : "Share image"}</button><button className="dark-button" onClick={onExportPdf} disabled={exporting}><FileText size={15} /> {exporting ? "Preparing…" : "Export PDF"}</button></div></section>
+    <section className="analytics-summary"><div className="analytics-summary-card"><span className="section-kicker">PATH COMPLETION</span><strong>{totalComplete}<small> modules</small></strong><span>Across your active learning paths</span></div><div className="analytics-summary-card"><span className="section-kicker">STUDY TIME</span><strong>86<small> min</small></strong><span>Logged in the last 7 days</span></div><div className="analytics-summary-card"><span className="section-kicker">CURRENT STREAK</span><strong>4<small> days</small></strong><span>Best month-to-date: 6 days</span></div></section>
+    <section className="chart-grid"><article className="chart-card chart-card-wide"><div className="chart-header"><div><div className="section-kicker">MODULES COMPLETED</div><h2>Progress over time</h2></div><span className="chart-legend"><i className="legend-blue" /> Modules</span></div><div className="chart-frame"><ResponsiveContainer width="100%" height="100%"><AreaChart data={progressHistory} margin={{ top: 8, right: 10, left: -22, bottom: 0 }}><defs><linearGradient id="cobaltArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#087efb" stopOpacity={0.22} /><stop offset="100%" stopColor="#087efb" stopOpacity={0} /></linearGradient></defs><CartesianGrid stroke={chartGrid} vertical={false} /><XAxis dataKey="week" tick={{ fill: chartInk, fontSize: 10 }} tickLine={false} axisLine={false} /><YAxis tick={{ fill: chartInk, fontSize: 10 }} tickLine={false} axisLine={false} allowDecimals={false} /><ChartTooltip contentStyle={chartTip} cursor={{ stroke: "#c7dcef" }} /><Area type="monotone" dataKey="completed" stroke="#087efb" strokeWidth={3} fill="url(#cobaltArea)" /></AreaChart></ResponsiveContainer></div></article><article className="chart-card"><div className="chart-header"><div><div className="section-kicker">STUDY MINUTES</div><h2>Weekly rhythm</h2></div><span className="chart-legend"><i className="legend-sage" /> Minutes</span></div><div className="chart-frame"><ResponsiveContainer width="100%" height="100%"><BarChart data={progressHistory.slice(-6)} margin={{ top: 8, right: 4, left: -22, bottom: 0 }}><CartesianGrid stroke={chartGrid} vertical={false} /><XAxis dataKey="week" tick={{ fill: chartInk, fontSize: 10 }} tickLine={false} axisLine={false} /><YAxis tick={{ fill: chartInk, fontSize: 10 }} tickLine={false} axisLine={false} /><ChartTooltip contentStyle={chartTip} cursor={{ fill: "#f1f4ef" }} /><Bar dataKey="minutes" fill="#6fb58d" radius={[2, 2, 0, 0]} /></BarChart></ResponsiveContainer></div></article></section>
+    <section className="export-sheet" id="progress-export-card"><div className="export-sheet-top"><div className="export-brand"><AppMark small /><span>PATHFINDER</span></div><span className="export-date">PROGRESS SNAPSHOT · AUG 24, 2026</span></div><div className="export-sheet-main"><div><span className="section-kicker">LEARNING PATH REPORT</span><h2>{learner.split(" ")[0]}’s momentum</h2><p>A focused snapshot of progress across Microsoft Learn paths.</p></div><strong className="export-score">67<span>%</span></strong></div><div className="export-sheet-bottom"><span><b>{totalComplete}</b> modules complete</span><span><b>4</b> day streak</span><span><b>86</b> study minutes this week</span><span>Pathfinder for Microsoft Learn</span></div></section>
+  </div>;
 }
 
 function AppMark({ small = false }: { small?: boolean }) {
@@ -143,6 +178,30 @@ export default function Home() {
   const [focusDone, setFocusDone] = useState<number[]>([]);
   const [settings, setSettings] = useState({ reminders: true, weeklyDigest: true });
   const [learner, setLearner] = useState(() => typeof window !== "undefined" ? (localStorage.getItem("pathfinder-learner") || "") : "");
+  const [exporting, setExporting] = useState(false);
+  const { theme, toggleTheme } = useTheme();
+
+  async function exportProgress(kind: "image" | "pdf") {
+    const surface = document.getElementById("analytics-export-surface");
+    if (!surface) return;
+    setExporting(true);
+    try {
+      const canvas = await html2canvas(surface, { scale: 2, backgroundColor: theme === "dark" ? "#101820" : "#f7f5ef", useCORS: true });
+      if (kind === "image") {
+        const link = document.createElement("a");
+        link.download = `pathfinder-progress-${new Date().toISOString().slice(0, 10)}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+        toast.success("Progress image downloaded", { description: "Your shareable Pathfinder snapshot is ready." });
+      } else {
+        const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: [canvas.width, canvas.height] });
+        pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, canvas.width, canvas.height);
+        pdf.save(`pathfinder-progress-${new Date().toISOString().slice(0, 10)}.pdf`);
+        toast.success("Progress PDF downloaded", { description: "Your Pathfinder report is ready to share." });
+      }
+    } catch { toast.error("Export could not be created", { description: "Try again from the analytics view." }); }
+    finally { setExporting(false); }
+  }
 
   function signIn(email: string, remember: boolean) {
     const displayName = email.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -172,10 +231,12 @@ export default function Home() {
   );
 
   if (!learner) return <LoginScreen onSignIn={signIn} />;
+  if (activeNav === "Analytics") return <AnalyticsView learner={learner} totalComplete={totalComplete} theme={theme} exporting={exporting} onBack={() => setActiveNav("Overview")} onThemeToggle={() => toggleTheme?.()} onExportImage={() => exportProgress("image")} onExportPdf={() => exportProgress("pdf")} />;
 
   function handleNav(label: string) {
     setActiveNav(label);
     setMobileNavOpen(false);
+    if (label === "Analytics") return;
     if (label === "My learning") setDialog("path");
     if (label === "Collections") setDialog("path");
     if (label === "Achievements") setDialog("readiness");
@@ -306,6 +367,7 @@ export default function Home() {
           <div className="topbar-left"><div className="topbar-brand"><AppMark small /><span>PATHFINDER</span></div><div className="breadcrumb"><span>Workspace</span><ChevronRight size={14} /><strong>{activeNav}</strong></div></div>
             <div className="topbar-actions">
             <span className="sync-chip"><span className="sync-dot" /> Synced 08:42</span>
+            <button className="theme-toggle top-theme-toggle" onClick={() => toggleTheme?.()} aria-label="Toggle dark mode">{theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}<span>{theme === "dark" ? "Light" : "Dark"}</span></button>
             <label className="search-box">
               <Search size={17} />
               <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search your learning" aria-label="Search your learning" />

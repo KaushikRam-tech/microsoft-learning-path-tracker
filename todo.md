@@ -1,5 +1,13 @@
 # Placeholder Interaction Upgrade Checklist
 
+# Analytics, Dark Mode, and Export Upgrade
+
+- [x] Add a dashboard analytics view with progress-over-time charts and statistics.
+- [x] Add a persistent dark mode toggle with premium theme styling.
+- [x] Add a shareable progress image export.
+- [x] Add a PDF progress export with print-friendly layout.
+- [x] Verify chart rendering, theme switching, export flows, responsiveness, and production build.
+
 # Premium Experience and GitHub Handoff
 
 - [x] Strengthen premium visual hierarchy, depth, and signature product branding.
