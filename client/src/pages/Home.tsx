@@ -1,6 +1,9 @@
 /* Precision Notebook: editorial study ledger, warm canvas, graphite ink, cobalt progress signals. */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { startLogin } from "@/const";
+import { trpc } from "@/lib/trpc";
+import { persistCompletionAndRefresh } from "@/lib/activityFlow";
 import { toast } from "sonner";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
@@ -109,16 +112,20 @@ const upcoming = [
   { day: "WED", date: "26", label: "Knowledge check", meta: "Quiz · 10 min", color: "orange", url: "https://learn.microsoft.com/en-us/training/modules/describe-cloud-service-types/5-knowledge-check/" },
 ];
 
-const progressHistory = [
-  { week: "Jul 06", completed: 2, minutes: 38 },
-  { week: "Jul 13", completed: 3, minutes: 52 },
-  { week: "Jul 20", completed: 4, minutes: 74 },
-  { week: "Jul 27", completed: 3, minutes: 61 },
-  { week: "Aug 03", completed: 5, minutes: 98 },
-  { week: "Aug 10", completed: 4, minutes: 86 },
-  { week: "Aug 17", completed: 6, minutes: 112 },
-  { week: "Aug 24", completed: 2, minutes: 34 },
-];
+type ProgressPoint = { week: string; completed: number; minutes: number };
+
+function buildProgressHistory(activities: Array<{ completedAt: Date; activityType: string; minutes: number }>): ProgressPoint[] {
+  const now = new Date();
+  return Array.from({ length: 8 }, (_, index) => {
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - (7 - index) * 7);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 7);
+    const bucket = activities.filter((activity) => activity.completedAt >= start && activity.completedAt < end);
+    return { week: start.toLocaleDateString(undefined, { month: "short", day: "2-digit" }), completed: bucket.filter((activity) => activity.activityType === "module_completed").length, minutes: bucket.reduce((sum, activity) => sum + activity.minutes, 0) };
+  });
+}
 
 const chartTooltipStyle = { background: "#fffefa", border: "1px solid #e1dfd7", borderRadius: 0, fontSize: 11, color: "#17212b" };
 
@@ -131,14 +138,14 @@ function ProgressBar({ value, color = "blue" }: { value: number; color?: string 
   );
 }
 
-function AnalyticsView({ learner, totalComplete, theme, exporting, onBack, onThemeToggle, onExportImage, onExportPdf }: { learner: string; totalComplete: number; theme: "light" | "dark"; exporting: boolean; onBack: () => void; onThemeToggle: () => void; onExportImage: () => void; onExportPdf: () => void }) {
+function AnalyticsView({ learner, totalComplete, theme, exporting, history, onBack, onThemeToggle, onExportImage, onExportPdf }: { learner: string; totalComplete: number; theme: "light" | "dark"; exporting: boolean; history: ProgressPoint[]; onBack: () => void; onThemeToggle: () => void; onExportImage: () => void; onExportPdf: () => void }) {
   const chartInk = theme === "dark" ? "#b2bfcb" : "#87918f";
   const chartGrid = theme === "dark" ? "#263642" : "#e8e6df";
   const chartTip = theme === "dark" ? { background: "#17232c", border: "1px solid #344651", borderRadius: 0, fontSize: 11, color: "#f2f6f8" } : chartTooltipStyle;
   return <div className="analytics-view" id="analytics-export-surface">
     <section className="analytics-heading"><div><div className="eyebrow"><span className="eyebrow-rule" /> PATHFINDER INSIGHTS</div><h1>Your learning, in motion.</h1><p>See how your focus is building over time, {learner.split(" ")[0]}.</p></div><div className="analytics-actions"><button className="theme-toggle analytics-theme" onClick={onThemeToggle}>{theme === "dark" ? <Sun size={15} /> : <Moon size={15} />} {theme === "dark" ? "Light mode" : "Dark mode"}</button><button className="outline-button" onClick={onBack}>Back to overview</button><button className="primary-button" onClick={onExportImage} disabled={exporting}><FileImage size={15} /> {exporting ? "Preparing…" : "Share image"}</button><button className="dark-button" onClick={onExportPdf} disabled={exporting}><FileText size={15} /> {exporting ? "Preparing…" : "Export PDF"}</button></div></section>
     <section className="analytics-summary"><div className="analytics-summary-card"><span className="section-kicker">PATH COMPLETION</span><strong>{totalComplete}<small> modules</small></strong><span>Across your active learning paths</span></div><div className="analytics-summary-card"><span className="section-kicker">STUDY TIME</span><strong>86<small> min</small></strong><span>Logged in the last 7 days</span></div><div className="analytics-summary-card"><span className="section-kicker">CURRENT STREAK</span><strong>4<small> days</small></strong><span>Best month-to-date: 6 days</span></div></section>
-    <section className="chart-grid"><article className="chart-card chart-card-wide"><div className="chart-header"><div><div className="section-kicker">MODULES COMPLETED</div><h2>Progress over time</h2></div><span className="chart-legend"><i className="legend-blue" /> Modules</span></div><div className="chart-frame"><ResponsiveContainer width="100%" height="100%"><AreaChart data={progressHistory} margin={{ top: 8, right: 10, left: -22, bottom: 0 }}><defs><linearGradient id="cobaltArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#087efb" stopOpacity={0.22} /><stop offset="100%" stopColor="#087efb" stopOpacity={0} /></linearGradient></defs><CartesianGrid stroke={chartGrid} vertical={false} /><XAxis dataKey="week" tick={{ fill: chartInk, fontSize: 10 }} tickLine={false} axisLine={false} /><YAxis tick={{ fill: chartInk, fontSize: 10 }} tickLine={false} axisLine={false} allowDecimals={false} /><ChartTooltip contentStyle={chartTip} cursor={{ stroke: "#c7dcef" }} /><Area type="monotone" dataKey="completed" stroke="#087efb" strokeWidth={3} fill="url(#cobaltArea)" /></AreaChart></ResponsiveContainer></div></article><article className="chart-card"><div className="chart-header"><div><div className="section-kicker">STUDY MINUTES</div><h2>Weekly rhythm</h2></div><span className="chart-legend"><i className="legend-sage" /> Minutes</span></div><div className="chart-frame"><ResponsiveContainer width="100%" height="100%"><BarChart data={progressHistory.slice(-6)} margin={{ top: 8, right: 4, left: -22, bottom: 0 }}><CartesianGrid stroke={chartGrid} vertical={false} /><XAxis dataKey="week" tick={{ fill: chartInk, fontSize: 10 }} tickLine={false} axisLine={false} /><YAxis tick={{ fill: chartInk, fontSize: 10 }} tickLine={false} axisLine={false} /><ChartTooltip contentStyle={chartTip} cursor={{ fill: "#f1f4ef" }} /><Bar dataKey="minutes" fill="#6fb58d" radius={[2, 2, 0, 0]} /></BarChart></ResponsiveContainer></div></article></section>
+    <section className="chart-grid"><article className="chart-card chart-card-wide"><div className="chart-header"><div><div className="section-kicker">MODULES COMPLETED</div><h2>Progress over time</h2></div><span className="chart-legend"><i className="legend-blue" /> Modules</span></div><div className="chart-frame"><ResponsiveContainer width="100%" height="100%"><AreaChart data={history} margin={{ top: 8, right: 10, left: -22, bottom: 0 }}><defs><linearGradient id="cobaltArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#087efb" stopOpacity={0.22} /><stop offset="100%" stopColor="#087efb" stopOpacity={0} /></linearGradient></defs><CartesianGrid stroke={chartGrid} vertical={false} /><XAxis dataKey="week" tick={{ fill: chartInk, fontSize: 10 }} tickLine={false} axisLine={false} /><YAxis tick={{ fill: chartInk, fontSize: 10 }} tickLine={false} axisLine={false} allowDecimals={false} /><ChartTooltip contentStyle={chartTip} cursor={{ stroke: "#c7dcef" }} /><Area type="monotone" dataKey="completed" stroke="#087efb" strokeWidth={3} fill="url(#cobaltArea)" /></AreaChart></ResponsiveContainer></div></article><article className="chart-card"><div className="chart-header"><div><div className="section-kicker">STUDY MINUTES</div><h2>Weekly rhythm</h2></div><span className="chart-legend"><i className="legend-sage" /> Minutes</span></div><div className="chart-frame"><ResponsiveContainer width="100%" height="100%"><BarChart data={history.slice(-6)} margin={{ top: 8, right: 4, left: -22, bottom: 0 }}><CartesianGrid stroke={chartGrid} vertical={false} /><XAxis dataKey="week" tick={{ fill: chartInk, fontSize: 10 }} tickLine={false} axisLine={false} /><YAxis tick={{ fill: chartInk, fontSize: 10 }} tickLine={false} axisLine={false} /><ChartTooltip contentStyle={chartTip} cursor={{ fill: "#f1f4ef" }} /><Bar dataKey="minutes" fill="#6fb58d" radius={[2, 2, 0, 0]} /></BarChart></ResponsiveContainer></div></article></section>
     <section className="export-sheet" id="progress-export-card"><div className="export-sheet-top"><div className="export-brand"><AppMark small /><span>PATHFINDER</span></div><span className="export-date">PROGRESS SNAPSHOT · AUG 24, 2026</span></div><div className="export-sheet-main"><div><span className="section-kicker">LEARNING PATH REPORT</span><h2>{learner.split(" ")[0]}’s momentum</h2><p>A focused snapshot of progress across Microsoft Learn paths.</p></div><strong className="export-score">67<span>%</span></strong></div><div className="export-sheet-bottom"><span><b>{totalComplete}</b> modules complete</span><span><b>4</b> day streak</span><span><b>86</b> study minutes this week</span><span>Pathfinder for Microsoft Learn</span></div></section>
   </div>;
 }
@@ -147,7 +154,7 @@ function AppMark({ small = false }: { small?: boolean }) {
   return <img className={`app-mark-image ${small ? "small" : ""}`} src="/manus-storage/pathfinder-mark_7479ba9c.png" alt="Pathfinder mark" />;
 }
 
-function LoginScreen({ onSignIn }: { onSignIn: (email: string, remember: boolean) => void }) {
+function LoginScreen({ onSignIn, onMicrosoftSignIn }: { onSignIn: (email: string, remember: boolean) => void; onMicrosoftSignIn: () => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
@@ -162,7 +169,7 @@ function LoginScreen({ onSignIn }: { onSignIn: (email: string, remember: boolean
 
   return <div className="login-shell">
     <div className="login-aside"><div className="login-brand"><AppMark /><div><strong>PATHFINDER</strong><span>Microsoft Learn</span></div></div><div className="login-aside-copy"><span className="section-kicker">A CLEARER WAY TO LEARN</span><h1>Make the next hour count.</h1><p>See your progress, pick up where you left off, and open the exact Microsoft Learn material you need.</p><div className="login-proof"><span><Check size={14} /> Progress stays in view</span><span><Check size={14} /> Every module has a next step</span><span><Check size={14} /> Built for focused learners</span></div></div><small className="login-aside-foot">Pathfinder for Microsoft Learn · 2026</small></div>
-    <main className="login-panel"><div className="login-panel-inner"><div className="login-panel-top"><span className="section-kicker">LEARNER WORKSPACE</span><span>New here? <button onClick={() => setError("Use the sign-in form to create a local workspace.")}>Create account</button></span></div><div className="login-form-heading"><h2>Sign in to Pathfinder</h2><p>Pick up your learning path without losing the thread.</p></div><form className="login-form" onSubmit={submit}><label>Email address<Input type="email" value={email} onChange={(event) => { setEmail(event.target.value); setError(""); }} placeholder="you@example.com" autoComplete="email" /></label><label>Password<Input type="password" value={password} onChange={(event) => { setPassword(event.target.value); setError(""); }} placeholder="Enter your password" autoComplete="current-password" /></label><div className="login-options"><label className="remember-option"><input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} /> Keep me signed in</label><button type="button" onClick={() => setError("Password reset is available once a connected account is enabled.")}>Forgot password?</button></div>{error && <div className="login-error" role="alert">{error}</div>}<button className="primary-button login-submit" type="submit">Continue to workspace <ArrowUpRight size={16} /></button></form><div className="login-divider"><span>LOCAL WORKSPACE SIGN-IN</span></div><p className="login-note">This frontend stores your learner session in this browser. Connect Microsoft OAuth later to use production accounts.</p></div></main>
+    <main className="login-panel"><div className="login-panel-inner"><div className="login-panel-top"><span className="section-kicker">LEARNER WORKSPACE</span><span>New here? <button onClick={() => setError("Use the sign-in form to create a local workspace.")}>Create account</button></span></div><div className="login-form-heading"><h2>Sign in to Pathfinder</h2><p>Pick up your learning path without losing the thread.</p></div><form className="login-form" onSubmit={submit}><label>Email address<Input type="email" value={email} onChange={(event) => { setEmail(event.target.value); setError(""); }} placeholder="you@example.com" autoComplete="email" /></label><label>Password<Input type="password" value={password} onChange={(event) => { setPassword(event.target.value); setError(""); }} placeholder="Enter your password" autoComplete="current-password" /></label><div className="login-options"><label className="remember-option"><input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} /> Keep me signed in</label><button type="button" onClick={() => setError("Password reset is available once a connected account is enabled.")}>Forgot password?</button></div>{error && <div className="login-error" role="alert">{error}</div>}<button className="primary-button login-submit" type="submit">Continue to workspace <ArrowUpRight size={16} /></button></form><div className="login-divider"><span>OR</span></div><button className="outline-button microsoft-login" type="button" onClick={onMicrosoftSignIn}><span className="microsoft-mark"><i /><i /><i /><i /></span> Sign in with Microsoft</button><div className="login-divider"><span>LOCAL WORKSPACE SIGN-IN</span></div><p className="login-note">Use Microsoft sign-in above to sync this workspace and its learning activity to your account.</p></div></main>
   </div>;
 }
 
@@ -175,7 +182,7 @@ export default function Home() {
   let { user, loading, error, isAuthenticated, logout } = useAuth();
 
   const [courses, setCourses] = useState(initialCourses);
-  const [activeNav, setActiveNav] = useState("Overview");
+  const [activeNav, setActiveNav] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("view") === "analytics" ? "Analytics" : "Overview");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [query, setQuery] = useState("");
@@ -185,9 +192,18 @@ export default function Home() {
   const [renameValue, setRenameValue] = useState("");
   const [focusDone, setFocusDone] = useState<number[]>([]);
   const [settings, setSettings] = useState({ reminders: true, weeklyDigest: true });
-  const [learner, setLearner] = useState(() => typeof window !== "undefined" ? (localStorage.getItem("pathfinder-learner") || "") : "");
+  const [learner, setLearner] = useState("");
   const [exporting, setExporting] = useState(false);
   const { theme, toggleTheme } = useTheme();
+  const activityQuery = trpc.activity.list.useQuery(undefined, { enabled: isAuthenticated });
+  const activityMutation = trpc.activity.record.useMutation();
+  const activityData = activityQuery.data ?? [];
+  const history = useMemo(() => buildProgressHistory(activityData.map((activity) => ({ ...activity, completedAt: new Date(activity.completedAt) }))), [activityData]);
+
+  useEffect(() => {
+    const accountName = user?.name || user?.email || "Microsoft learner";
+    setLearner(isAuthenticated ? accountName : "");
+  }, [isAuthenticated, user?.name, user?.email]);
 
   async function exportProgress(kind: "image" | "pdf") {
     const surface = document.getElementById("analytics-export-surface");
@@ -211,18 +227,13 @@ export default function Home() {
     finally { setExporting(false); }
   }
 
-  function signIn(email: string, remember: boolean) {
-    const displayName = email.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
-    setLearner(displayName);
-    if (remember) localStorage.setItem("pathfinder-learner", displayName); else sessionStorage.setItem("pathfinder-learner", displayName);
-    toast.success("Workspace unlocked", { description: `Good to have you here, ${displayName}.` });
+  function signIn() {
+    startLogin();
   }
 
-  function signOut() {
-    localStorage.removeItem("pathfinder-learner");
-    sessionStorage.removeItem("pathfinder-learner");
+  async function signOut() {
+    try { await logout(); } catch { toast.error("Could not sign out", { description: "Please try again." }); }
     setLearner("");
-    toast("Signed out of Pathfinder");
   }
 
   function openLearn(url: string, label: string) {
@@ -231,15 +242,19 @@ export default function Home() {
   }
 
   const totalComplete = useMemo(
-    () => courses.reduce((sum, course) => sum + course.done, 0),
-    [courses],
+    () => courses.reduce((sum, course) => sum + course.done, 0) + activityData.filter((activity) => activity.activityType === "module_completed").length,
+    [courses, activityData],
   );
+  const persistedCompletions = useMemo(() => activityData.filter((activity) => activity.activityType === "module_completed").reduce((counts, activity) => counts.set(activity.pathId, (counts.get(activity.pathId) ?? 0) + 1), new Map<string, number>()), [activityData]);
+  const getCourseDone = (course: Course) => course.done + (course.id === 1 ? (persistedCompletions.get("azure-fundamentals") ?? 0) : 0);
+  const heroDone = getCourseDone(courses[0]);
+  const heroPercent = Math.min(100, Math.round((heroDone / courses[0].lessons) * 100));
   const filteredCourses = courses.filter((course) =>
     `${course.title} ${course.category}`.toLowerCase().includes(query.toLowerCase()),
   );
 
-  if (!learner) return <LoginScreen onSignIn={signIn} />;
-  if (activeNav === "Analytics") return <AnalyticsView learner={learner} totalComplete={totalComplete} theme={theme} exporting={exporting} onBack={() => setActiveNav("Overview")} onThemeToggle={() => toggleTheme?.()} onExportImage={() => exportProgress("image")} onExportPdf={() => exportProgress("pdf")} />;
+  if (loading || !isAuthenticated || !learner) return <LoginScreen onSignIn={signIn} onMicrosoftSignIn={() => startLogin()} />;
+  if (activeNav === "Analytics") return <AnalyticsView learner={learner} totalComplete={totalComplete} theme={theme} exporting={exporting} history={history} onBack={() => setActiveNav("Overview")} onThemeToggle={() => toggleTheme?.()} onExportImage={() => exportProgress("image")} onExportPdf={() => exportProgress("pdf")} />;
 
   function handleNav(label: string) {
     setActiveNav(label);
@@ -291,12 +306,16 @@ export default function Home() {
   }
 
   function completeNext() {
-    setCourses((current) =>
-      current.map((course, index) =>
-        index === 0 ? { ...course, done: Math.min(course.done + 1, course.lessons) } : course,
-      ),
-    );
-    toast.success("Module marked complete", { description: "Your Azure Fundamentals progress is up to date." });
+    if (!isAuthenticated) {
+      toast.error("Sign in required", { description: "Use Microsoft sign-in to save course progress." });
+      return;
+    }
+    void persistCompletionAndRefresh({
+      record: () => activityMutation.mutateAsync({ pathId: "azure-fundamentals", activityType: "module_completed", title: "Describe cloud service types", minutes: 18 }),
+      refresh: () => activityQuery.refetch(),
+      onSuccess: () => toast.success("Module marked complete", { description: "Your synced Azure Fundamentals progress is up to date." }),
+      onError: () => toast.error("Progress was not saved", { description: "Please try again when your connection is stable." }),
+    }).catch(() => undefined);
   }
 
   return (
@@ -402,8 +421,8 @@ export default function Home() {
                 <div className="card-kicker"><span className="blue-dot" /> CURRENT PATH</div>
                 <h2>Azure Fundamentals</h2>
                 <p>Build a working foundation in cloud concepts, services, and architecture.</p>
-                <div className="hero-progress-row"><strong>67%</strong><span>8 of 12 modules complete</span></div>
-                <ProgressBar value={67} />
+                <div className="hero-progress-row"><strong>{heroPercent}%</strong><span>{heroDone} of {courses[0].lessons} modules complete</span></div>
+                <ProgressBar value={heroPercent} />
                 <div className="hero-card-footer"><button className="primary-button" onClick={() => { completeNext(); openLearn(initialCourses[1].url, "Describe cloud service types"); }}><Play size={15} fill="currentColor" /> Continue learning</button><span className="last-studied"><Clock3 size={14} /> Last studied yesterday</span></div>
               </div>
               <div className="hero-image-wrap">
@@ -433,13 +452,14 @@ export default function Home() {
             <div className="section-heading"><div><div className="section-kicker">KEEP MOVING</div><h2>Your learning paths</h2></div><button className="text-button" onClick={() => setShowAll(!showAll)}>{showAll ? "Show less" : "View all paths"} <ArrowUpRight size={15} /></button></div>
             <div className="path-cards">
               {filteredCourses.slice(0, showAll ? 3 : 2).map((course, index) => {
-                const percent = Math.round((course.done / course.lessons) * 100);
+                const done = getCourseDone(course);
+                const percent = Math.round((done / course.lessons) * 100);
                 return <article className={`course-card course-${course.accent}`} key={course.id}>
                   <div className="course-top"><span className="course-icon">{course.accent === "blue" ? <Cloud size={20} /> : course.accent === "sage" ? <BookOpen size={20} /> : <Target size={20} />}</span><button className="more-button" aria-label={`More options for ${course.title}`} onClick={() => openCourseOptions(course)}><MoreHorizontal size={18} /></button></div>
                   <div className="course-content"><span className="course-category">{course.category}</span><h3>{course.title}</h3><p>{course.provider}</p></div>
                   {course.image && <img className="course-thumb" src={course.image} alt="Abstract cloud pathway illustration" />}
-                  <div className="course-progress"><div className="course-progress-label"><span>{course.done}/{course.lessons} modules</span><strong>{percent}%</strong></div><ProgressBar value={percent} color={course.accent} /></div>
-                  <button className="course-action" onClick={() => course.done === course.lessons ? toast.success("Path complete — nice work!") : (course.id === 1 ? completeNext() : null, openLearn(course.url, course.title))}>{course.done === 0 ? "Open path" : "Continue"} <ChevronRight size={15} /></button>
+                  <div className="course-progress"><div className="course-progress-label"><span>{done}/{course.lessons} modules</span><strong>{percent}%</strong></div><ProgressBar value={percent} color={course.accent} /></div>
+                  <button className="course-action" onClick={() => done === course.lessons ? toast.success("Path complete — nice work!") : (course.id === 1 ? completeNext() : null, openLearn(course.url, course.title))}>{done === 0 ? "Open path" : "Continue"} <ChevronRight size={15} /></button>
                 </article>;
               })}
               {filteredCourses.length > 0 && !showAll && !query && <aside className="path-annotation"><div className="annotation-rule" /><div className="section-kicker">FIELD NOTES</div><p>Two paths in motion. One clear next move.</p><span><CheckCircle2 size={13} /> Synced with your study plan</span><small>Last updated 08:42</small></aside>}

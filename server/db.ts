@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertLearnerActivity, InsertUser, learnerActivity, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,15 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+export async function getLearnerActivity(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(learnerActivity).where(eq(learnerActivity.userId, userId)).orderBy(desc(learnerActivity.completedAt));
+}
+
+export async function recordLearnerActivity(activity: InsertLearnerActivity) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  await db.insert(learnerActivity).values(activity);
+  return { success: true } as const;
+}
